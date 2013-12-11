@@ -1,5 +1,5 @@
 parameters:
 
 services:
-    whitworf.geoip2.databasereader:
-        class:    Whitworf\Reader\DatabaseReader
+    whitworf.geoip2:
+        class:     Whitworf\GeoIP2Bundle\GeoIP2

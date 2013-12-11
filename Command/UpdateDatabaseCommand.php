@@ -23,23 +23,73 @@ class UpdateDatabaseCommand extends ContainerAwareCommand {
 
     protected function execute(InputInterface $input, OutputInterface $output) {
 
+        $dataDir = $this->getDataDirectoryPath();
+        if (!file_exists($dataDir)) {
+            mkdir($dataDir);
+        }
 
+        $url = 'http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz';
 
+        $tempFilename = tempnam($dataDir, 'countryFile') . ".gz";
+
+        $dataDownloadPath = $dataDir . "/GeoLite2-Country.mmdb";
+
+        $outputFile = fopen($tempFilename, 'wb');
+
+        $output->writeln(sprintf("Beginning download of file: %s", $url));
         set_time_limit(0); // unlimited max execution time
         $options = [
-            CURLOPT_FILE    => '/path/to/download/the/file/to.zip',
-            CURLOPT_TIMEOUT =>  28800, // set this to 8 hours so we dont timeout on big files
-            CURLOPT_URL     => 'http://remoteserver.com/path/to/big/file.zip',
+            CURLOPT_FILE => $outputFile,
+            CURLOPT_TIMEOUT => 28800,
+            CURLOPT_URL => $url
         ];
 
         $ch = curl_init();
         curl_setopt_array($ch, $options);
         curl_exec($ch);
-        
-        
-        
-        
 
+
+        $output->writeln("Download complete");
+
+        $output->writeln("De-compressing file");
+        $outputUncompressedTempFileName = $this->decompressFile($tempFilename);
+        $output->writeln("Decompression complete");
+
+
+        rename($outputUncompressedTempFileName, $dataDownloadPath);
+        chmod($dataDownloadPath, 0x777);
+    }
+
+    private function getDataDirectoryPath() {
+
+
+        return dirname(__FILE__) . "/../Resources/data";
+    }
+
+    /**
+     * @param $filename
+     * @return string
+     */
+    protected function decompressFile($filename) {
+
+        $dataDir = $this->getDataDirectoryPath();
+
+        $zip = gzopen($filename, 'rb');
+
+        $outputUncompressedTempFileName = tempnam($dataDir, 'dbupdate');
+
+        $outputUncompressedTempFile = fopen($outputUncompressedTempFileName, 'wb');
+
+        $bufferSize = 4096;
+
+        while (!gzeof($zip)) {
+            fwrite($outputUncompressedTempFile, gzread($zip, $bufferSize));
+        }
+
+        fclose($outputUncompressedTempFile);
+        gzclose($zip);
+
+        return $outputUncompressedTempFileName;
     }
 
 } 
